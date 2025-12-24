@@ -52,7 +52,7 @@ chmod +x "$ADDON_DIR/install.sh"
 # Buat update.sh
 cat > "$ADDON_DIR/update.sh" <<'EOL'
 #!/bin/bash
-REPO_URL="https://github.com/juna659/termux-addon"
+REPO_URL="https://github.com/juna659/version"
 LOCAL_VERSION_FILE="$HOME/termux-addon/.version"
 
 LATEST_HASH=$(curl -s "$REPO_URL/commits/main" | grep -oP '(?<=commit/)[a-f0-9]{40}' | head -1)
