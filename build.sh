@@ -1,104 +1,103 @@
 #!/bin/bash
-# Build script for termux-addon
+# build.sh - Build termux-addon project with universal t-a launcher
+
 ADDON_DIR="$HOME/termux-addon"
+BIN_DIR="$ADDON_DIR/bin"
 
 echo "Creating termux-addon structure..."
+mkdir -p "$BIN_DIR"
 
-# Buat direktori utama
-mkdir -p "$ADDON_DIR/bin"
-
-# Buat README.md
-cat > "$ADDON_DIR/README.md" <<EOL
+# ===== README.md =====
+cat > "$ADDON_DIR/README.md" <<'EOF'
 # Termux Addon
-A small set of scripts to enhance Termux experience.
-Includes system info, network check, and hello world examples.
-EOL
+A small set of scripts to enhance your Termux experience.
+Use the "t-a" command to manage packages.
+EOF
 
-# Buat install.sh
-cat > "$ADDON_DIR/install.sh" <<'EOL'
+# ===== install.sh =====
+cat > "$ADDON_DIR/install.sh" <<'EOF'
 #!/bin/bash
-# Safe installer for termux-addon
-# This script installs scripts from bin/ to $PREFIX/bin
 
-set -e
+ADDON_DIR="$HOME/termux-addon"
+BIN_DIR="$ADDON_DIR/bin"
+TARGET_DIR="$PREFIX/bin"
 
-echo "Installing termux-addon scripts to $PREFIX/bin..."
+echo "Termux Addon Installer"
+echo "======================"
 
-mkdir -p "$PREFIX/bin"
+i=1
+scripts=()
 
-for src in bin/*; do
-    dest="$PREFIX/bin/$(basename "$src")"
+for f in "$BIN_DIR"/*.py; do
+    name=$(basename "$f")
+    echo "[$i] $name"
+    scripts+=("$name")
+    ((i++))
+done
 
-    # Skip if source and destination are the same file
-    if [ "$src" -ef "$dest" ]; then
-        echo "Skipping $(basename "$src") (already installed)"
-        continue
-    fi
+read -p "Select scripts to install (example: 1 3): " choices
 
-    # Copy if file does not exist or source is newer
-    if [ ! -e "$dest" ] || [ "$src" -nt "$dest" ]; then
-        cp "$src" "$dest"
-        echo "Installed $(basename "$src")"
-    else
-        echo "Skipping $(basename "$src") (up-to-date)"
+mkdir -p "$TARGET_DIR"
+
+for c in $choices; do
+    idx=$((c - 1))
+    s="${scripts[$idx]}"
+    if [ -n "$s" ]; then
+        base="${s%.*}"
+        cp "$BIN_DIR/$s" "$TARGET_DIR/$base"
+        chmod +x "$TARGET_DIR/$base"
+        echo "Installed: $base"
     fi
 done
 
-echo "All scripts installed! You can now run them directly."
-EOL
+# install t-a launcher
+cp "$BIN_DIR/t-a" "$TARGET_DIR/t-a"
+chmod +x "$TARGET_DIR/t-a"
+
+echo "Done. Use commands directly, e.g.: pingcheck"
+EOF
 
 chmod +x "$ADDON_DIR/install.sh"
 
-# Buat update.sh
-cat > "$ADDON_DIR/update.sh" <<'EOL'
+# ===== t-a launcher =====
+cat > "$BIN_DIR/t-a" <<'EOF'
 #!/bin/bash
-REPO_URL="https://github.com/juna659/version"
-LOCAL_VERSION_FILE="$HOME/termux-addon/.version"
+# t-a universal launcher: auto check and run packages
 
-LATEST_HASH=$(curl -s "$REPO_URL/commits/main" | grep -oP '(?<=commit/)[a-f0-9]{40}' | head -1)
+TARGET_DIR="$PREFIX/bin"
 
-if [ ! -f "$LOCAL_VERSION_FILE" ]; then
-    echo "$LATEST_HASH" > "$LOCAL_VERSION_FILE"
-    echo "Termux-addon version file created."
-    exit 0
+if [ $# -eq 0 ]; then
+    echo "Usage: <package>  (managed by t-a)"
+    exit 1
 fi
 
-LOCAL_HASH=$(cat "$LOCAL_VERSION_FILE")
+CMD="$1"
+shift
 
-if [ "$LATEST_HASH" != "$LOCAL_HASH" ]; then
-    echo "Please update the termux-addon to get more experiences!"
-    echo "$LATEST_HASH" > "$LOCAL_VERSION_FILE"
-else
-    echo "Your termux-addon is up to date."
+PACKAGE_PATH="$TARGET_DIR/$CMD"
+
+if [ ! -f "$PACKAGE_PATH" ]; then
+    echo "Please install the package first using 't-a install'"
+    exit 1
 fi
-EOL
 
-chmod +x "$ADDON_DIR/update.sh"
+"$PACKAGE_PATH" "$@"
+EOF
 
-# Buat contoh script Python di bin/
-cat > "$ADDON_DIR/bin/hello.py" <<'EOL'
-#!/usr/bin/env python3
-print("Hello from termux-addon!")
-EOL
+chmod +x "$BIN_DIR/t-a"
 
-cat > "$ADDON_DIR/bin/sysinfo.py" <<'EOL'
-#!/usr/bin/env python3
-import os, platform
-print(f"OS: {platform.system()} {platform.release()}")
-print(f"User: {os.getlogin()}")
-EOL
-
-cat > "$ADDON_DIR/bin/netcheck.py" <<'EOL'
+# ===== contoh package pingcheck =====
+cat > "$BIN_DIR/pingcheck.py" <<'EOF'
 #!/usr/bin/env python3
 import os
-response = os.system("ping -c 1 8.8.8.8 > /dev/null 2>&1")
-if response == 0:
-    print("Network is reachable")
-else:
-    print("Network is down")
-EOL
 
-chmod +x "$ADDON_DIR/bin/"*
+hosts = input("Enter hosts separated by space: ").split()
+for host in hosts:
+    response = os.system(f"ping -c 1 {host} > /dev/null 2>&1")
+    print(f"{host}: {'reachable' if response == 0 else 'down'}")
+EOF
+
+chmod +x "$BIN_DIR/"*
 
 echo "Termux-addon build complete!"
 echo "Run '$ADDON_DIR/install.sh' to install scripts."
