@@ -1,8 +1,9 @@
 # termux-addon
 
-```bash
+```shell
 pkg install git
 git clone https://github.com/juna659/termux-addon 
-unzip termux-addon
+unzip termux-addon-main.zip
+bash build.sh
 cd termux-addon
-t-a install
+ls
